@@ -1,0 +1,356 @@
+% ============================
+% DESARROLLO / PROCEDIMIENTO
+% ============================
+\newpage
+\section{Desarrollo}
+    Para el desarrollo de esta práctica se diseñó e implementó un intérprete de comandos en lenguaje C que permite ejecutar operaciones básicas de manejo de archivos utilizando exclusivamente llamadas al sistema POSIX. El proyecto se organizó en una estructura modular donde cada comando cuenta con su propio par de archivos de implementación y cabecera, facilitando así la mantenibilidad y escalabilidad del código.
+
+    \subsection{Estructura del Proyecto}
+        El proyecto se compone de un total de 18 archivos fuente distribuidos de la siguiente manera:
+
+        \begin{itemize}
+            \item \texttt{main.c} y \texttt{main.h}: contienen el bucle principal del intérprete, el manejo del prompt, la tokenización de la entrada del usuario y el despacho de comandos.
+            \item \texttt{commands/}: directorio que alberga los módulos de cada comando, donde cada uno consta de un archivo de implementación (\texttt{.c}) y uno de cabecera (\texttt{.h}).
+            \item \texttt{Makefile}: script de compilación que genera el ejecutable con las banderas \texttt{-Wall -Wextra -std=c11}.
+            \item \texttt{commands/info.txt}: archivo de texto que almacena la tabla de ayuda mostrada por el comando \texttt{info}.
+        \end{itemize}
+
+        La estructura de directorios se presenta a continuación:
+        \begin{verbatim}
+P02_interprete_1178761/
+├── main.c
+├── main.h
+├── Makefile
+└── commands/
+    ├── info.c / info.h / info.txt
+    ├── join.c / join.h
+    ├── copy.c / copy.h
+    ├── del.c / del.h
+    ├── cd.c / cd.h
+    ├── sdir.c / sdir.h
+    ├── clear.c / clear.h
+    └── exit_cmd.c / exit_cmd.h
+        \end{verbatim}
+
+    \subsection{Bucle Principal del Intérprete}
+        El archivo \texttt{main.c} constituye el núcleo del intérprete. Su funcionamiento se basa en un ciclo infinito que: (1) muestra el prompt con el directorio de trabajo actual, (2) lee la línea de entrada del usuario mediante \texttt{fgets()}, (3) tokeniza la entrada utilizando \texttt{strtok()} para separar el comando y sus argumentos, y (4) despacha la ejecución al módulo correspondiente mediante comparaciones con \texttt{strcmp()}.
+
+        El prompt del intérprete muestra el formato \texttt{so@interprete:\textasciitilde/path >>> }, donde se indica el directorio de trabajo actual. Si el directorio se encuentra dentro del HOME del usuario, se sustituye la ruta absoluta por el carácter \texttt{\textasciitilde} para mayor legibilidad.
+
+        Una característica importante es el manejo de la señal \texttt{SIGINT} (Ctrl+C), la cual está configurada para no terminar el proceso del intérprete, sino simplemente mostrar una nueva línea y el prompt, permitiendo al usuario continuar interactuando.
+
+        A continuación se presenta el segmento del bucle principal donde se realiza el despacho de comandos:
+        \begin{lstlisting}[language=C, caption={Bucle principal - Despacho de comandos}]
+/* Identificar y ejecutar comando */
+if (strcmp(command, "exit") == 0) {
+    break;
+} else if (strcmp(command, "info") == 0) {
+    info();
+} else if (strcmp(command, "cd") == 0) {
+    cd(arg1);
+} else if (strcmp(command, "sdir") == 0) {
+    sdir();
+} else if (strcmp(command, "clear") == 0) {
+    clearScreen();
+} else if (strcmp(command, "join>") == 0) {
+    joinWrite(arg1);
+} else if (strcmp(command, "join") == 0) {
+    joinRead(arg1);
+} else if (strcmp(command, "copy") == 0) {
+    copy(arg1, arg2);
+} else if (strcmp(command, "del") == 0) {
+    del(arg1);
+} else {
+    printf(COLOR_RED "%s" COLOR_RESET
+           ": comando no encontrado\n", command);
+}
+        \end{lstlisting}
+
+    \subsection{Comando join — Lectura de Archivos}
+        El comando \texttt{join} implementa la lectura del contenido de un archivo utilizando las system calls \texttt{open()}, \texttt{read()}, \texttt{write()} y \texttt{close()}. El archivo se abre en modo solo lectura (\texttt{O\_RDONLY}), y su contenido se lee en bloques de 1024 bytes mediante un buffer, escribiendo cada bloque directamente en \texttt{STDOUT\_FILENO} (descriptor de salida estándar).
+
+        \begin{lstlisting}[language=C, caption={Comando join - Lectura con system calls}]
+void joinRead(const char *filePath) {
+    if (filePath == NULL || filePath[0] == '\0') {
+        printf("Error: join requiere un archivo.\n");
+        return;
+    }
+    int fd = open(filePath, O_RDONLY);
+    if (fd == -1) {
+        printf("Error: no se pudo abrir '%s'.\n",
+               filePath);
+        return;
+    }
+    char buf[BUFFER_SIZE];
+    ssize_t n;
+    printf("\n--- Contenido de '%s' ---\n", filePath);
+    while ((n = read(fd, buf, sizeof(buf))) > 0) {
+        write(STDOUT_FILENO, buf, n);
+    }
+    printf("--- Fin de '%s' ---\n\n", filePath);
+    close(fd);
+}
+        \end{lstlisting}
+
+    \subsection{Comando join$>$ — Creación de Archivos}
+        El comando \texttt{join>} permite al usuario crear un nuevo archivo de texto. Tras recibir el nombre del archivo, el intérprete entra en un modo de captura de texto donde cada línea ingresada se escribe al archivo mediante \texttt{write()}. El modo finaliza cuando el usuario ingresa el carácter \texttt{\$} como única línea.
+
+        El archivo se crea con \texttt{open()} utilizando las banderas \texttt{O\_WRONLY | O\_CREAT | O\_TRUNC} y permisos \texttt{S\_IRUSR | S\_IWUSR} (lectura y escritura para el propietario).
+
+        \begin{lstlisting}[language=C, caption={Comando join$>$ - Modo escritura}]
+void joinWrite(const char *filePath) {
+    int fd = open(filePath,
+                  O_WRONLY | O_CREAT | O_TRUNC,
+                  S_IRUSR | S_IWUSR);
+    if (fd == -1) {
+        printf("Error: no se pudo crear '%s'.\n",
+               filePath);
+        return;
+    }
+    printf("Escribe el contenido. "
+           "Para guardar escribe '$'.\n");
+    char line[BUFFER_SIZE];
+    while (1) {
+        printf("> ");
+        fflush(stdout);
+        if (fgets(line, sizeof(line), stdin) == NULL)
+            break;
+        line[strcspn(line, "\n")] = '\0';
+        char *dollar = strchr(line, '$');
+        if (dollar != NULL) {
+            if (dollar > line) {
+                *dollar = '\0';
+                write(fd, line, strlen(line));
+                write(fd, "\n", 1);
+            }
+            break;
+        }
+        write(fd, line, strlen(line));
+        write(fd, "\n", 1);
+    }
+    close(fd);
+    printf("Archivo '%s' guardado.\n", filePath);
+}
+        \end{lstlisting}
+
+    \subsection{Comando copy — Copia de Archivos}
+        El comando \texttt{copy} realiza la copia completa de un archivo origen a un archivo destino. Utiliza \texttt{open()} con \texttt{O\_RDONLY} para el archivo fuente y \texttt{O\_WRONLY | O\_CREAT | O\_TRUNC} para el destino. La transferencia se realiza en bloques de 1024 bytes, acumulando el total de bytes copiados para informar al usuario al finalizar.
+
+        \begin{lstlisting}[language=C, caption={Comando copy - Copia con buffer}]
+void copy(const char *source, const char *dest) {
+    int fdIn = open(source, O_RDONLY);
+    if (fdIn == -1) {
+        printf("Error: no se pudo abrir '%s'.\n",
+               source);
+        return;
+    }
+    int fdOut = open(dest,
+                     O_WRONLY | O_CREAT | O_TRUNC,
+                     S_IRUSR | S_IWUSR);
+    if (fdOut == -1) {
+        printf("Error: no se pudo crear '%s'.\n",
+               dest);
+        close(fdIn);
+        return;
+    }
+    char buffer[BUFFER_SIZE];
+    ssize_t bytesRead;
+    long totalBytes = 0;
+    while ((bytesRead = read(fdIn, buffer,
+                             sizeof(buffer))) > 0) {
+        write(fdOut, buffer, bytesRead);
+        totalBytes += bytesRead;
+    }
+    close(fdIn);
+    close(fdOut);
+    printf("Archivo copiado: '%s' -> '%s' "
+           "(%ld bytes).\n", source, dest, totalBytes);
+}
+        \end{lstlisting}
+
+    \subsection{Comando del — Eliminación de Archivos}
+        El comando \texttt{del} elimina un archivo del sistema de archivos utilizando la system call \texttt{unlink()}. Esta función elimina la entrada del directorio asociada al archivo; si no quedan referencias al archivo, el sistema operativo libera los bloques de disco ocupados.
+
+        \begin{lstlisting}[language=C, caption={Comando del - Eliminación con unlink()}]
+void del(const char *filePath) {
+    if (filePath == NULL || filePath[0] == '\0') {
+        printf("Error: del requiere un archivo.\n");
+        return;
+    }
+    if (unlink(filePath) == 0) {
+        printf("Archivo '%s' eliminado.\n", filePath);
+    } else {
+        printf("Error: no se pudo eliminar '%s'.\n",
+               filePath);
+    }
+}
+        \end{lstlisting}
+
+    \subsection{Comando cd — Cambio de Directorio}
+        El comando \texttt{cd} cambia el directorio de trabajo actual utilizando la system call \texttt{chdir()}. Admite tres modos de operación: (1) sin argumentos, cambia al directorio HOME del usuario; (2) con \texttt{\textasciitilde}, resuelve la ruta relativa al HOME; (3) con una ruta absoluta o relativa directa. El directorio HOME se obtiene mediante \texttt{getenv("HOME")} o, en su defecto, mediante \texttt{getpwuid(getuid())}.
+
+        \begin{lstlisting}[language=C, caption={Comando cd - Cambio de directorio}]
+void cd(const char *path) {
+    const char *homeDir = getHomeDirectory();
+    if (path == NULL || path[0] == '\0') {
+        if (chdir(homeDir) != 0)
+            printf("cd: No se pudo cambiar al HOME\n");
+    } else if (strcmp(path, "~") == 0 ||
+               strncmp(path, "~/", 2) == 0) {
+        char fullPath[512];
+        snprintf(fullPath, sizeof(fullPath),
+                 "%s/%s", homeDir, path + 2);
+        if (chdir(fullPath) != 0)
+            printf("cd: %s: No existe\n", fullPath);
+    } else {
+        if (chdir(path) != 0)
+            printf("cd: %s: No existe\n", path);
+    }
+}
+        \end{lstlisting}
+
+    \subsection{Comandos auxiliares: sdir, clear, info}
+        El comando \texttt{sdir} utiliza \texttt{getcwd()} para obtener e imprimir el directorio de trabajo actual. El comando \texttt{clear} envía secuencias de escape ANSI (\texttt{\textbackslash 033[2J\textbackslash 033[H\textbackslash 033[3J}) para limpiar la pantalla de la terminal. El comando \texttt{info} abre y muestra el archivo \texttt{commands/info.txt} mediante las system calls \texttt{open()}, \texttt{read()} y \texttt{write()}, utilizando \texttt{readlink("/proc/self/exe")} para localizar la ruta del ejecutable y acceder al archivo de ayuda de forma independiente del directorio de trabajo.
+
+    \subsection{Makefile}
+        El archivo \texttt{Makefile} centraliza la compilación del proyecto, listando todos los archivos fuente y utilizando las banderas \texttt{-Wall -Wextra -std=c11} para una compilación estricta que detecta advertencias potenciales.
+
+        \begin{verbatim}
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c11
+TARGET  = interprete
+SRCS    = main.c commands/info.c commands/join.c \
+          commands/copy.c commands/del.c \
+          commands/cd.c commands/sdir.c \
+          commands/clear.c commands/exit_cmd.c
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+clean:
+	rm -f $(TARGET)
+        \end{verbatim}
+
+
+% ============================
+% RESULTADOS
+% ============================
+\newpage
+\section{Resultados}
+    En esta sección se presentan los resultados obtenidos durante la ejecución del intérprete de comandos. Cada comando fue probado verificando su correcto funcionamiento, el manejo de errores y la permanencia del intérprete tras cada operación.
+
+    \subsection{Inicio del Intérprete}
+        La Figura \ref{fig:inicio} muestra el intérprete al ser ejecutado. Se observa el mensaje de bienvenida y el primer prompt indicando el directorio de trabajo actual.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/inicio.png}
+            \caption{Ejecución del intérprete y mensaje de bienvenida.}
+            \label{fig:inicio}
+        \end{figure}
+
+    \subsection{Comando info}
+        La Figura \ref{fig:info} presenta la salida del comando \texttt{info}, que muestra la tabla de comandos disponibles con su sintaxis y descripción correspondiente.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/info.png}
+            \caption{Resultado del comando info con la tabla de comandos.}
+            \label{fig:info}
+        \end{figure}
+
+    \subsection{Comando join — Lectura de Archivo}
+        La Figura \ref{fig:join_read} muestra la ejecución del comando \texttt{join} para mostrar el contenido del archivo \texttt{celulares.txt}. Se observa el contenido leído correctamente utilizando las system calls \texttt{open()}, \texttt{read()} y \texttt{write()}.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/join_read.png}
+            \caption{Lectura de archivo con el comando join.}
+            \label{fig:join_read}
+        \end{figure}
+
+        La Figura \ref{fig:join_error} evidencia el manejo de errores cuando se intenta leer un archivo que no existe. El intérprete muestra un mensaje de error y continúa en espera de nuevos comandos sin finalizar.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/join_error.png}
+            \caption{Error al intentar leer un archivo inexistente.}
+            \label{fig:join_error}
+        \end{figure}
+
+    \subsection{Comando join$>$ — Creación de Archivo}
+        La Figura \ref{fig:join_write} presenta el proceso de creación de un archivo nuevo mediante \texttt{join>}. Se observa el modo de captura de texto, la escritura línea por línea y la finalización con el carácter \texttt{\$}.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/join_write.png}
+            \caption{Creación de archivo con join$>$ en modo texto.}
+            \label{fig:join_write}
+        \end{figure}
+
+        La Figura \ref{fig:join_write_verif} verifica que el archivo fue creado correctamente mostrando su contenido con el comando \texttt{join}.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/join_write_verif.png}
+            \caption{Verificación del archivo creado con join.}
+            \label{fig:join_write_verif}
+        \end{figure}
+
+    \subsection{Comando copy — Copia de Archivo}
+        La Figura \ref{fig:copy} ilustra la copia del archivo \texttt{a.txt} a un archivo destino \texttt{a\_copia.txt}. Se muestra el mensaje con la cantidad de bytes transferidos exitosamente.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/copy.png}
+            \caption{Copia de archivo con el comando copy.}
+            \label{fig:copy}
+        \end{figure}
+
+        La Figura \ref{fig:copy_verif} confirma que ambos archivos contienen el mismo contenido, validando la integridad de la operación de copia.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/copy_verif.png}
+            \caption{Verificación de la copia con join.}
+            \label{fig:copy_verif}
+        \end{figure}
+
+    \subsection{Comando del — Eliminación de Archivo}
+        La Figura \ref{fig:del} muestra la eliminación del archivo \texttt{a\_copia.txt} previamente creado. Se observa el mensaje de confirmación y la verificación posterior de que el archivo ya no existe.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/del.png}
+            \caption{Eliminación de archivo con el comando del.}
+            \label{fig:del}
+        \end{figure}
+
+    \subsection{Comando cd — Cambio de Directorio}
+        La Figura \ref{fig:cd} presenta varias pruebas del comando \texttt{cd}: cambio al directorio HOME, cambio a una ruta relativa, cambio a una ruta absoluta, y el manejo de error ante un directorio inexistente. Se verifica el cambio efectivo con el comando \texttt{sdir}.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/cd.png}
+            \caption{Pruebas del comando cd con distintas rutas.}
+            \label{fig:cd}
+        \end{figure}
+
+    \subsection{Comando sdir — Directorio Actual}
+        La Figura \ref{fig:sdir} muestra la salida del comando \texttt{sdir} que imprime la ruta completa del directorio de trabajo actual.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/sdir.png}
+            \caption{Salida del comando sdir con el directorio actual.}
+            \label{fig:sdir}
+        \end{figure}
+
+    \subsection{Manejo de Errores y Permanencia del Intérprete}
+        La Figura \ref{fig:error_cmd} demuestra que al ingresar un comando inexistente, el intérprete muestra un mensaje de error y muestra un nuevo prompt, sin finalizar su ejecución. Esto valida uno de los requisitos fundamentales de la práctica.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/error_cmd.png}
+            \caption{Manejo de comando no reconocido.}
+            \label{fig:error_cmd}
+        \end{figure}
+
+    \subsection{Salida del Intérprete}
+        La Figura \ref{fig:exit} presenta la finalización ordenada del intérprete mediante el comando \texttt{exit}, terminando el proceso y regresando al shell del sistema operativo.
+        \begin{figure}[!h]
+            \centering
+            % \includegraphics[width=0.8\textwidth]{Imagenes/exit.png}
+            \caption{Salida del intérprete con el comando exit.}
+            \label{fig:exit}
+        \end{figure}

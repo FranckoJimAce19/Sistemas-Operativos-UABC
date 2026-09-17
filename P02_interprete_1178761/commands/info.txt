@@ -1,0 +1,15 @@
+=========================================================
+          INTERPRETE DE COMANDOS — Informacion
+=========================================================
+COMANDO                       DESCRIPCION
+---------------------------------------------------------
+join [archivo]                Muestra el contenido de un archivo
+join> [archivo]               Crea un archivo en modo texto (termina con $)
+copy [origen] [destino]       Copia un archivo a otro destino
+del [archivo]                 Elimina un archivo
+cd [directorio]               Cambia el directorio de trabajo
+sdir                          Muestra el directorio actual
+clear                         Limpia la pantalla
+info                          Muestra esta ayuda
+exit                          Termina el interprete
+=========================================================

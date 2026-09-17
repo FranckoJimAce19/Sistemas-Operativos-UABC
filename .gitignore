@@ -1,0 +1,15 @@
+# Binarios compilados
+*.exe
+interprete
+repasoEnC
+
+# Archivos de datos generados
+creatures
+
+# VS Code
+.vscode/
+
+# Archivos temporales
+*.o
+*.obj
+*.tmp
