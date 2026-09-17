@@ -3,7 +3,7 @@
 # Script: verificar_contrasena.sh
 # Verifica si una contrasena es segura
 
-# 1. Verificar que me dieron un argumento
+# Verificar que me dieron un argumento
 if [ $# -ne 1 ]; then
     echo "Error: Debes indicar una contrasena."
     echo "Uso: ./verificar_contrasena.sh MiContrasena123"
@@ -13,13 +13,13 @@ fi
 CONTRASENA=$1
 SEGURO=1
 
-# 2. Verificar longitud minima de 8 caracteres
+# Verificar longitud minima de 8 caracteres
 if [ ${#CONTRASENA} -lt 8 ]; then
     echo "No cumple: Debe tener al menos 8 caracteres."
     SEGURO=0
 fi
 
-# 3. Verificar que tenga letras y numeros
+# Verificar que tenga letras y numeros
 if ! echo "$CONTRASENA" | grep -q "[a-zA-Z]"; then
     echo "No cumple: Debe tener letras."
     SEGURO=0
@@ -30,7 +30,7 @@ if ! echo "$CONTRASENA" | grep -q "[0-9]"; then
     SEGURO=0
 fi
 
-# 4. Verificar que tenga mayusculas y minusculas
+# Verificar que tenga mayusculas y minusculas
 if ! echo "$CONTRASENA" | grep -q "[A-Z]"; then
     echo "No cumple: Debe tener letras mayusculas."
     SEGURO=0
