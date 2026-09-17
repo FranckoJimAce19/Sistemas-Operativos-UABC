@@ -13,3 +13,7 @@ creatures
 *.o
 *.obj
 *.tmp
+
+# Archivos generados por pruebas
+borrar_seguro_basura/
+personajes_copia.txt
