@@ -1,0 +1,3 @@
+make clean: borra arbol y zombie
+make arbol: compila arbol.c
+make zombie: compila zombie.c

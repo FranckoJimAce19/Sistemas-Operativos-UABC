@@ -2,9 +2,13 @@
 *.exe
 interprete
 repasoEnC
+arbol
+zombie
+a.out
 
 # Archivos de datos generados
 creatures
+file[0-9]*
 
 # VS Code
 .vscode/
@@ -13,7 +17,17 @@ creatures
 *.o
 *.obj
 *.tmp
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.out
+*.run.xml
+*.synctex.gz
 
 # Archivos generados por pruebas
 borrar_seguro_basura/
 personajes_copia.txt
+V00_varios_1178761/
+
