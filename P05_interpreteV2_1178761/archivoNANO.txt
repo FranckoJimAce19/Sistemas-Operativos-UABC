@@ -1,0 +1,6 @@
+id, nombre, cantidad, precio
+111, computadora, 3, 16300
+555, television, 10, 8600
+888, ps5, 8, 9000
+222, calzado, 20, 899
+

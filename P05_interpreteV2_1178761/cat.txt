@@ -1,0 +1,636 @@
+\documentclass[12pt]{article}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{amsmath, amssymb}
+\usepackage{listings}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2cm]{geometry}
+\usepackage[maxbibnames=99, sorting=none, backend=bibtex]{biblatex}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstdefinestyle{CStyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    language=C
+}
+\lstset{style=CStyle}
+\addbibresource{referencias.bib}
+
+\graphicspath{{Imagenes/}}
+
+% ============================
+% DATOS DEL REPORTE
+% ============================
+\newcommand{\universidad}{Universidad Autónoma de Baja California}
+\newcommand{\facultad}{Facultad de Ingeniería}
+\newcommand{\carrera}{Ingeniería en Computación}
+\newcommand{\materia}{36299 - Sistemas Operativos}
+\newcommand{\docente}{Jesús Albany Armenta García}
+\newcommand{\practica}{P04 - Procesos}
+\newcommand{\alumno}{1178761 - Jiménez Acevedo Francisco Alejandro}
+\newcommand{\grupo}{261}
+\newcommand{\fecha}{Mexicali, Baja California, 22 de septiembre del 2026}
+
+% ============================
+\begin{document}
+\setlength{\parindent}{0pt}
+
+% ============================
+% PORTADA
+% ============================
+\begin{titlepage}
+\centering
+
+{\bfseries \universidad \par}
+\vspace{0.5cm}
+
+\includegraphics[width=0.35\textwidth]{UABC.png}
+
+\vspace{0.5cm}
+{\large \facultad \par}
+{\large \carrera \par}
+
+\vspace{1.5cm}
+{\large \materia \par}
+
+\vspace{1cm}
+{\large Docente: \docente \par}
+
+\vspace{1cm}
+{\Large \bfseries \practica \par}
+
+\vspace{2cm}
+{\large Alumno: \alumno \par}
+{\large Grupo: \grupo \par}
+
+\vfill
+{\large \fecha}
+
+\end{titlepage}
+
+% ============================
+% INTRODUCCIÓN
+% ============================
+\section{Introducción}
+    Un proceso es un programa en ejecución y la unidad de trabajo de los sistemas de cómputo modernos. A diferencia de un programa estático almacenado en disco, un proceso es una entidad dinámica que posee su propio espacio de direcciones, contador de programa y recursos asignados por el sistema operativo. Desde el momento en que un proceso es creado hasta que finaliza su ejecución, atraviesa distintos estados que el núcleo del sistema operativo administra de forma continua. \par
+    En esta práctica se analizará el ciclo de vida de un proceso con la finalidad de lograr un entendimiento a fondo de los mismos mediante la creación de un árbol de procesos y la creación de un proceso \textit{zombie}. El árbol de procesos permite observar cómo un proceso padre puede generar múltiples procesos hijos de manera jerárquica usando la llamada al sistema \texttt{fork()}, y cómo cada hijo puede a su vez ejecutar tareas específicas del sistema operativo. Por otro lado, el proceso zombie ilustra qué ocurre cuando un proceso hijo termina su ejecución pero el padre aún no ha recogido su código de salida, situación que deja al proceso en un estado residual dentro de la tabla de procesos del sistema.
+
+% ============================
+% JUSTIFICACIÓN
+% ============================
+\section{Justificación}
+    El estudio del ciclo de vida de un proceso es indispensable para cualquier estudiante de sistemas operativos, ya que todo el software que se ejecuta en una computadora lo hace en el contexto de uno o más procesos. Los sistemas operativos modernos dependen de mecanismos precisos de creación, sincronización y terminación de procesos para garantizar la estabilidad y el uso eficiente de los recursos del sistema. Sin una comprensión sólida de estos mecanismos, resulta difícil diseñar software que se comporte correctamente en entornos multitarea o que interactúe de forma segura con el sistema operativo. \par
+    Esta práctica se justifica en la necesidad de desarrollar competencias prácticas para crear y analizar jerarquías de procesos mediante la llamada al sistema \texttt{fork()}, sincronizar la ejecución del proceso padre con sus hijos a través de \texttt{wait()}, y ejecutar comandos del sistema operativo desde código en C usando \texttt{system()}. Asimismo, reproducir un proceso zombie permite comprender las consecuencias de no gestionar correctamente la terminación de los hijos, lo que en aplicaciones reales puede derivar en fugas de recursos y degradación del rendimiento del sistema. De esta manera, la práctica establece las bases necesarias para abordar temas más avanzados del curso, como la planificación de la CPU, la comunicación entre procesos y la administración de memoria.
+
+% ============================
+% OBJETIVOS
+% ============================
+\newpage
+\section{Objetivos}
+    \subsection{Objetivo General}
+        \begin{itemize}
+            \item Identificar un ciclo de vida de un proceso para comprender el funcionamiento del software de un sistema de cómputo de manera organizada y creativa.
+        \end{itemize}
+
+    \subsection{Objetivos Específicos}
+        \begin{itemize}
+            \item Crear una estructura jerárquica de procesos en C mediante la llamada al sistema \texttt{fork()}, respetando la relación padre-hijo definida en el diagrama de la práctica.
+            \item Implementar la sincronización entre procesos padre e hijo mediante la llamada al sistema \texttt{wait()}, asegurando que el padre espere la finalización de todos sus hijos antes de continuar.
+            \item Crear un proceso hijo que se convierta en zombie al terminar antes de que el padre recoja su estado, y visualizarlo con el comando \texttt{ps -l} desde la misma terminal.
+            \item Ejecutar un programa como proceso de fondo (\textit{background}) usando el operador \texttt{\&} en la terminal.
+        \end{itemize}
+
+% ============================
+% PROBLEMÁTICA
+% ============================
+\section{Problemática}
+La práctica solicita realizar los siguientes programas en C:
+    \begin{enumerate}
+        \item Crear la siguiente estructura de procesos (Figura \ref{fig:arbol_estructura}). Todo nodo deberá mostrar el PID de su padre.
+        \begin{itemize}
+            \item \textbf{Nodo P:} Deberá mostrar el mensaje ``Soy el padre de todos los siguientes procesos, los cuales realizan distintas tareas''. Deberá esperar a que todos los procesos que se creen a partir de él terminen para mostrar el mensaje ``Todos los procesos han terminado''.
+            \item \textbf{Nodo A:} Deberá mostrar el mensaje ``Soy Nodo A y mi PID es: \#\#\#\#''. Creará a los Nodos B y C y deberá ejecutar el comando de shell \textit{clear}. Nota: el comando clear deberá ser ejecutado una vez que las impresiones de todos los nodos siguientes se muestren en pantalla y antes del último mensaje de Nodo P.
+            \item \textbf{Nodo B:} Mostrará el mensaje ``Soy Nodo B, mi PID es: \#\#\#\#'' para después mostrar el nombre del directorio actual.
+            \item \textbf{Nodo C:} Mostrará el mensaje ``Soy Nodo C, mi PID es: \#\#\#\# y el PID de mi nodo padre es: \#\#\#\#''. Posterior a eso, mostrará el contenido del directorio actual.
+            \item \textbf{Nodo D:} Mostrará el mensaje ``Soy Nodo D, mi PID es: \#\#\#\#'' y ejecutará el comando adecuado para mostrar la lista de los procesos actuales.
+            \item \textbf{Nodo E:} Deberá mostrar el mensaje ``Soy Nodo E, mi PID es: \#\#\#\#'' y la fecha del sistema.
+            \item \textbf{Nodo F:} Mostrará el mensaje ``Soy Nodo F, mi PID es: \#\#\#\#'' para posteriormente listar la lista de los procesos actuales.
+            \item \textbf{Nodo G:} Mostrará el mensaje ``Soy Nodo G, mi PID es: \#\#\#\#'' y creará un archivo llamado \texttt{estructura\_procesos}.
+        \end{itemize}
+
+        \item ¿Cuál es la diferencia entre \texttt{exec()} y \texttt{system()}?
+
+        \item Realizar un programa en C que cree un proceso hijo el cual pasará a convertirse en un proceso \textit{zombie}. Este deberá permanecer en el sistema por más de un minuto, o bien, hasta que el usuario termine el proceso padre con la ayuda del comando de shell \textit{kill} desde la terminal. Para poder visualizar al proceso zombie, el programa deberá ser ejecutado como proceso de fondo (\textit{background}) y desde esa misma terminal, utilizar el comando \texttt{ps -l} para visualizar los procesos actualmente en ejecución.
+    \end{enumerate}
+
+% ============================
+% MARCO TEORICO
+% ============================
+\section{Marco Teórico}
+    \subsection{El Ciclo de Vida de un Proceso}
+    Un proceso puede estar en alguno de los siguientes estados:
+    \begin{itemize}
+        \item \textbf{New} --- el proceso está siendo creado.
+        \item \textbf{Running} --- las instrucciones están siendo ejecutadas.
+        \item \textbf{Waiting} --- el proceso está esperando algún evento (I/O o recepción de una señal).
+        \item \textbf{Ready} --- el proceso está en espera de ser asignado a un procesador.
+        \item \textbf{Terminated} --- el proceso ha terminado su ejecución.
+    \end{itemize}
+
+    \subsection{Creación de Procesos}
+    Durante la ejecución de un proceso, es posible que este cree múltiples procesos nuevos. El proceso que crea uno nuevo es llamado proceso padre, mientras que el nuevo es referido como hijo de dicho proceso. \par
+    Para crear un proceso se utiliza la llamada al sistema \texttt{fork()}. La función \texttt{fork()} retorna un \texttt{0} para el proceso hijo, mientras que para el padre retorna el PID del proceso hijo. \par
+    Ambos procesos continúan con las instrucciones siguientes al \texttt{fork()} ya que el proceso hijo es un duplicado del proceso padre, es decir, tiene el mismo programa y datos. Sin embargo, esto no descarta la posibilidad de que el hijo pueda cargar un nuevo programa. \par
+    Cuando un proceso padre crea un nuevo proceso, existen dos posibilidades en términos de ejecución:
+    \begin{itemize}
+        \item El proceso padre continúa su ejecución de forma concurrente con el proceso hijo.
+        \item El proceso padre espera a que el proceso hijo haya terminado (llamada al sistema \texttt{wait()}).
+    \end{itemize}
+
+    \subsection{Diferencia entre \texttt{exec()} y \texttt{system()}}
+    Ambas funciones permiten ejecutar comandos o programas externos desde un proceso en C, pero difieren en su comportamiento:
+    \begin{itemize}
+        \item \textbf{\texttt{exec()}}: sustituye completamente la imagen del proceso actual (código, datos y pila) con la del nuevo programa. Si tiene éxito, el proceso original nunca retorna; solo el nuevo programa continúa ejecutándose bajo el mismo PID.
+        \item \textbf{\texttt{system()}}: crea un proceso hijo con \texttt{fork()}, ejecuta el comando indicado en un shell (\texttt{/bin/sh -c}) dentro de ese hijo, y espera su terminación con \texttt{wait()}. El proceso padre \textit{sí} continúa su ejecución una vez que \texttt{system()} retorna.
+    \end{itemize}
+
+    \subsection{Ejecución en segundo plano (\textit{background})}
+    En la shell de Linux, agregar el operador \texttt{\&} al final de un comando lo envía al fondo (\textit{background}), de modo que la terminal queda libre para ejecutar otros comandos mientras el proceso continúa corriendo.
+% ============================
+% DESARROLLO / PROCEDIMIENTO
+% ============================
+\newpage
+\section{Desarrollo}
+    Para el desarrollo de esta práctica se implementaron dos programas en C. El proyecto se organizó en la carpeta \texttt{P04\_procesos\_1178761/}, que contiene los archivos \texttt{arbol.c}, \texttt{zombie.c} y la subcarpeta \texttt{nodos/} con un archivo \texttt{.c} por cada nodo del árbol y el encabezado compartido \texttt{nodos.h}. A continuación se detalla cada componente.
+
+    \subsection{Árbol de procesos}
+
+    \subsubsection{Estructura del árbol}
+    El árbol de procesos implementado tiene la estructura que se muestra en la Figura \ref{fig:arbol_estructura}: el Nodo P es la raíz y crea al Nodo A; el Nodo A crea a los Nodos B y C; el Nodo C crea al Nodo D; el Nodo D crea a los Nodos E y F; y el Nodo F crea al Nodo G.
+
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.38\textwidth]{Imagenes/arbol_estructura.png}
+        \caption{Estructura del árbol de procesos implementado.}
+        \label{fig:arbol_estructura}
+    \end{figure}
+
+    \subsubsection{arbol.c — Programa principal}
+    El programa principal incluye el encabezado \texttt{nodos.h} e invoca a \texttt{nodoP()}, que es la raíz del árbol.
+
+    \begin{lstlisting}[caption={arbol.c -- programa principal.}]
+#include <stdio.h>
+#include "nodos/nodos.h"
+
+/*
+ * Programa principal del arbol de procesos.
+ * Solo llama al Nodo P, que es la raiz del arbol.
+ */
+int main(void)
+{
+    nodoP();
+    return 0;
+}
+    \end{lstlisting}
+
+    \subsubsection{nodos.h — Encabezado compartido}
+    El archivo \texttt{nodos.h} declara los prototipos de todas las funciones de los nodos, permitiendo que cada archivo \texttt{.c} conozca la firma de los demás.
+
+    \begin{lstlisting}[caption={nodos/nodos.h -- prototipos de los nodos.}]
+#ifndef NODOS_H
+#define NODOS_H
+
+/* Cada nodo del arbol de procesos es una funcion aparte */
+void nodoP(void);
+void nodoA(void);
+void nodoB(void);
+void nodoC(void);
+void nodoD(void);
+void nodoE(void);
+void nodoF(void);
+void nodoG(void);
+
+#endif
+    \end{lstlisting}
+
+    \subsubsection{nodoP.c — Nodo raíz}
+    El Nodo P muestra el mensaje de presentación y el PID de su propio padre. Crea al Nodo A con \texttt{fork()} y espera a que termine con \texttt{waitpid()}. Una vez que todos los procesos del árbol han concluido, imprime el mensaje final.
+
+    \begin{lstlisting}[caption={nodos/nodoP.c -- nodo raiz del arbol.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoP(void)
+{
+    int pidA;
+
+    printf("Soy el padre de todos los siguientes procesos, "
+           "los cuales realizan distintas tareas\n");
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+    fflush(stdout);
+
+    pidA = fork();
+
+    if (pidA == 0) {
+        nodoA();
+        exit(0);
+    }
+    waitpid(pidA, NULL, 0);
+
+    printf("Todos los procesos han terminado\n");
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoA.c — Crea B y C, ejecuta \texttt{clear}}
+    El Nodo A muestra su PID, crea los Nodos B y C, espera a que ambos terminen y luego —previa confirmación del usuario— ejecuta el comando \texttt{clear}. La función auxiliar \texttt{esperarTecla()} desactiva temporalmente el modo canónico del terminal para capturar una sola tecla sin necesitar \textit{Enter}.
+
+    \begin{lstlisting}[caption={nodos/nodoA.c -- crea a B y C y ejecuta clear.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <termios.h>
+#include <unistd.h>
+#include "nodos.h"
+
+static void esperarTecla(void)
+{
+    struct termios attrsViejos;
+    struct termios attrsNuevos;
+    int esTerminal;
+
+    printf("\nPresiona cualquier tecla para limpiar la pantalla...");
+    fflush(stdout);
+
+    esTerminal = isatty(STDIN_FILENO);
+
+    if (esTerminal && tcgetattr(STDIN_FILENO, &attrsViejos) == 0) {
+        attrsNuevos = attrsViejos;
+        attrsNuevos.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &attrsNuevos);
+        getchar();
+        tcsetattr(STDIN_FILENO, TCSANOW, &attrsViejos);
+    } else {
+        getchar();
+    }
+    printf("\n");
+}
+
+void nodoA(void)
+{
+    int pidB;
+    int pidC;
+
+    printf("Soy Nodo A y mi PID es: %d\n", getpid());
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+    fflush(stdout);
+
+    pidB = fork();
+    if (pidB == 0) { nodoB(); exit(0); }
+
+    pidC = fork();
+    if (pidC == 0) { nodoC(); exit(0); }
+
+    waitpid(pidB, NULL, 0);
+    waitpid(pidC, NULL, 0);
+
+    esperarTecla();
+    system("clear");
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoB.c — Muestra el directorio actual}
+    El Nodo B imprime su PID y el PID de su padre, luego ejecuta \texttt{pwd} con \texttt{system()} para mostrar el nombre del directorio de trabajo actual.
+
+    \begin{lstlisting}[caption={nodos/nodoB.c -- muestra el directorio actual.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoB(void)
+{
+    printf("Soy Nodo B, mi PID es: %d\n", getpid());
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+    system("pwd");
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoC.c — Lista el directorio y crea al Nodo D}
+    El Nodo C muestra su PID y el de su padre, lista el contenido del directorio con \texttt{ls -l}, y crea al Nodo D esperando su terminación.
+
+    \begin{lstlisting}[caption={nodos/nodoC.c -- lista el directorio y crea al Nodo D.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoC(void)
+{
+    int pidD;
+
+    printf("Soy Nodo C, mi PID es: %d y el PID de mi "
+           "nodo padre es: %d\n", getpid(), getppid());
+
+    system("ls -l");
+    fflush(stdout);
+
+    pidD = fork();
+    if (pidD == 0) { nodoD(); exit(0); }
+    waitpid(pidD, NULL, 0);
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoD.c — Lista procesos y crea a E y F}
+    El Nodo D muestra su PID y el de su padre, ejecuta \texttt{ps -l} para mostrar los procesos actuales, y crea a los Nodos E y F de forma concurrente.
+
+    \begin{lstlisting}[caption={nodos/nodoD.c -- lista procesos y crea a E y F.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoD(void)
+{
+    int pidE;
+    int pidF;
+
+    printf("Soy Nodo D, mi PID es: %d\n", getpid());
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+    system("ps -l");
+    fflush(stdout);
+
+    pidE = fork();
+    if (pidE == 0) { nodoE(); exit(0); }
+
+    pidF = fork();
+    if (pidF == 0) { nodoF(); exit(0); }
+
+    waitpid(pidE, NULL, 0);
+    waitpid(pidF, NULL, 0);
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoE.c — Muestra la fecha del sistema}
+    El Nodo E imprime su PID y el de su padre, y ejecuta el comando \texttt{date} para mostrar la fecha y hora del sistema.
+
+    \begin{lstlisting}[caption={nodos/nodoE.c -- muestra la fecha del sistema.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoE(void)
+{
+    printf("Soy Nodo E, mi PID es: %d\n", getpid());
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+    system("date");
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoF.c — Lista procesos y crea al Nodo G}
+    El Nodo F muestra su PID y el de su padre, ejecuta \texttt{ps -l} y crea al Nodo G esperando su terminación.
+
+    \begin{lstlisting}[caption={nodos/nodoF.c -- lista procesos y crea al Nodo G.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoF(void)
+{
+    int pidG;
+
+    printf("Soy Nodo F, mi PID es: %d\n", getpid());
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+    system("ps -l");
+    fflush(stdout);
+
+    pidG = fork();
+    if (pidG == 0) { nodoG(); exit(0); }
+    waitpid(pidG, NULL, 0);
+}
+    \end{lstlisting}
+
+    \subsubsection{nodoG.c — Crea el archivo \texttt{estructura\_procesos}}
+    El Nodo G muestra su PID y el de su padre, y crea el archivo \texttt{estructura\_procesos}. Es el nodo hoja más profundo del árbol.
+
+    \begin{lstlisting}[caption={nodos/nodoG.c -- crea el archivo estructura\_procesos.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "nodos.h"
+
+void nodoG(void)
+{
+    FILE *archivo;
+
+    printf("Soy Nodo G, mi PID es: %d\n", getpid());
+    printf("El PID de mi nodo padre es: %d\n", getppid());
+
+    archivo = fopen("estructura_procesos", "w");
+
+    if (archivo == NULL) {
+        printf("No se pudo crear el archivo estructura_procesos\n");
+        return;
+    }
+
+    fprintf(archivo, "Soy Nodo G, mi PID es: %d\n", getpid());
+    fprintf(archivo, "El PID de mi nodo padre es: %d\n", getppid());
+    fclose(archivo);
+
+    printf("Se creo el archivo: estructura_procesos\n");
+}
+    \end{lstlisting}
+
+    \subsection{Diferencia entre \texttt{exec()} y \texttt{system()}}
+    Como respuesta al punto 2: \texttt{exec()} sustituye completamente el proceso actual con la del nuevo programa (el proceso original no continúa), mientras que \texttt{system()} crea un proceso hijo temporal con \texttt{fork()}, ejecuta el comando en un shell dentro de ese hijo y espera su terminación con \texttt{wait()}, permitiendo que el proceso padre continúe después. En esta práctica se usó \texttt{system()} en los nodos B, C, D, E, F y G precisamente para conservar el proceso de cada nodo mientras ejecuta comandos del sistema.
+
+    \subsection{Proceso zombie}
+    El programa \texttt{zombie.c} crea un proceso hijo que termina de inmediato con \texttt{exit(0)}, convirtiéndose en zombie porque el padre no llama a \texttt{waitpid()} de inmediato. El padre espera 65 segundos en un bucle \texttt{for}, lo que permite observar el proceso zombie con \texttt{ps -l} durante ese tiempo. Al finalizar, el padre llama a \texttt{waitpid()} para limpiar la entrada de la tabla de procesos.
+
+    \begin{lstlisting}[caption={zombie.c -- crea un proceso zombie observable.}]
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int main(void)
+{
+    int pidHijo;
+    int i;
+
+    pidHijo = fork();
+
+    if (pidHijo == 0) {
+        printf("[HIJO]  PID: %d | Termino y me quedo como zombie\n",
+               getpid());
+        fflush(stdout);
+        exit(0);
+    }
+
+    printf("[PADRE] PID: %d | Cree al hijo (zombie) PID: %d\n",
+           getpid(), pidHijo);
+    fflush(stdout);
+
+    //Tiempo de espera para el padre
+    for (i = 0; i < 65; i++) {
+        sleep(1);
+    }
+
+    waitpid(pidHijo, NULL, 0);
+    printf("Se murio el zombie \n");
+    fflush(stdout);
+
+    return 0;
+}
+    \end{lstlisting}
+
+    Para ejecutarlo en segundo plano y observar el zombie desde la misma terminal se usa el operador \texttt{\&}:
+    \begin{lstlisting}[language=bash, caption={Ejecución del zombie en background y verificación con ps.}]
+$ ./zombie &
+[1] 12345
+[PADRE] PID: 12345 | Cree al hijo (zombie) PID: 12346
+[HIJO]  PID: 12346 | Termino y me quedo como zombie
+$ ps -l
+    \end{lstlisting}
+
+% ============================
+% RESULTADOS
+% ============================
+\newpage
+\section{Resultados}
+    En esta sección se presentan los resultados obtenidos durante la ejecución de los programas, verificando la construcción correcta del árbol de procesos y la observación del proceso zombie.
+
+    \subsection{Árbol de procesos}
+    En la Figura \ref{diagrama}, podemos ver el como se ejecutó el programa la primera vez y como los PIDs están vinculados a sus nodos correspondientes, el cual se realizo para la verificación manual de la ejecución del código
+    .
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.75\textwidth]{Imagenes/Sistemas operativos_1.jpg}
+        \caption{Diagrama mostrando todos los nodos del árbol.}
+        \label{diagrama}
+    \end{figure}
+
+     La Figura \ref{fig:arbol_ejecucion} muestra la salida completa de \texttt{./arbol}: los mensajes de cada nodo con sus PIDs y el PID de su padre, reflejando la jerarquía del árbol.
+    
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.7\textwidth]{Imagenes/arbol_ejecucion.png}
+        \caption{Salida de \texttt{./arbol} mostrando todos los nodos del árbol.}
+        \label{fig:arbol_ejecucion}
+    \end{figure}
+
+    La Figura \ref{fig:arbol_clear} muestra el mensaje de espera antes de ejecutar \texttt{clear}, y la Figura \ref{fig:arbol_final} muestra la pantalla limpia con el mensaje final del Nodo P.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.7\textwidth]{Imagenes/arbol_clear.png}
+        \caption{Mensaje de espera antes de ejecutar \texttt{clear} (Nodo A).}
+        \label{fig:arbol_clear}
+    \end{figure}
+
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=1\textwidth]{Imagenes/arbol_final.png}
+        \caption{Pantalla limpia con el mensaje final del Nodo P.}
+        \label{fig:arbol_final}
+    \end{figure}
+
+\newpage
+    La Figura \ref{fig:arbol_estructura_procesos} muestra el contenido del archivo \texttt{estructura\_procesos} generado por el Nodo G.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.8\textwidth]{Imagenes/arbol_estructura_procesos.png}
+        \caption{Contenido del archivo \texttt{estructura\_procesos} creado por el Nodo G.}
+        \label{fig:arbol_estructura_procesos}
+    \end{figure}
+
+    \subsection{Proceso zombie}
+    La Figura \ref{fig:zombie_ejecucion} muestra el lanzamiento de \texttt{./zombie \&} y la ejecución de \texttt{ps -l} desde la misma terminal mientras el padre sigue en espera.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=1\textwidth]{Imagenes/zombie_ejecucion.png}
+        \caption{Ejecución de \texttt{./zombie \&} y verificación con \texttt{ps -l}.}
+        \label{fig:zombie_ejecucion}
+    \end{figure}
+
+    La Figura \ref{fig:zombie_fin} muestra el mensaje final del padre al recoger el estado del zombie con \texttt{waitpid()}.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=1\textwidth]{Imagenes/zombie_fin.png}
+        \caption{Mensaje final del padre al limpiar el proceso zombie.}
+        \label{fig:zombie_fin}
+    \end{figure}
+
+% ============================
+% CONCLUSIONES
+% ============================
+\newpage
+\section{Conclusiones}
+    El desarrollo de los programas del árbol de procesos y del proceso zombie permitió aplicar de manera directa los conceptos del ciclo de vida de un proceso en Linux, así como el uso de las llamadas al sistema \texttt{fork()}, \texttt{waitpid()} y \texttt{exit()}. \par
+    La implementación del árbol de procesos demostró cómo un proceso puede crear múltiples hijos de forma jerárquica: cada nodo creó sus hijos con \texttt{fork()} y esperó su terminación con \texttt{waitpid()}, garantizando una sincronización correcta. La organización del código en módulos separados —un archivo por nodo— facilitó su comprensión y mantenimiento. \par
+    La diferencia entre \texttt{exec()} y \texttt{system()} resultó clave: \texttt{system()} conserva el proceso padre mientras ejecuta un subproceso en un shell, lo que lo hace adecuado para los nodos de esta práctica; \texttt{exec()} en cambio reemplaza completamente el proceso actual, siendo más eficiente cuando no se necesita retornar al código original. \par
+    El programa zombie ilustró un escenario real de gestión incorrecta de procesos: si el padre no recoge el código de salida del hijo, la entrada del hijo permanece en la tabla de procesos. Este comportamiento, verificado con \texttt{ps -l}, refuerza la importancia de llamar a \texttt{wait()} en todo programa que cree procesos hijos. En conjunto, la práctica fortaleció la comprensión del funcionamiento del software en un sistema de cómputo y estableció la base para abordar temas más avanzados del curso.
+
+% ============================
+% REFERENCIAS
+% ============================
+\nocite{*}
+\printbibliography
+
+% ============================
+% ANEXO
+% ============================
+\newpage
+\section*{Anexo: Código Fuente del Proyecto}
+
+El código fuente completo de los programas se encuentra disponible en el repositorio del proyecto en GitHub, donde se incluyen todos los archivos fuente y el \texttt{Makefile}:
+
+\begin{center}
+    \url{https://github.com/FranckoJimAce19/Sistemas-Operativos-UABC}
+\end{center}
+
+Dentro del repositorio, en la carpeta \texttt{P04\_procesos\_1178761/}, se encuentran los siguientes archivos:
+
+\begin{itemize}
+    \item \texttt{arbol.c} — Programa principal que inicia el árbol de procesos llamando al Nodo P.
+    \item \texttt{zombie.c} — Programa que crea un proceso zombie observable durante más de un minuto.
+    \item \texttt{Makefile} — Reglas de compilación para \texttt{arbol} y \texttt{zombie}, con objetivo \texttt{clean}.
+    \item \texttt{nodos/nodos.h} — Encabezado con los prototipos de todos los nodos.
+    \item \texttt{nodos/nodoP.c} — Nodo raíz: muestra mensaje, crea Nodo A y espera.
+    \item \texttt{nodos/nodoA.c} — Crea Nodos B y C; ejecuta \texttt{clear} con confirmación del usuario.
+    \item \texttt{nodos/nodoB.c} — Muestra PID y ejecuta \texttt{pwd}.
+    \item \texttt{nodos/nodoC.c} — Muestra PID, ejecuta \texttt{ls -l} y crea Nodo D.
+    \item \texttt{nodos/nodoD.c} — Muestra PID, ejecuta \texttt{ps -l} y crea Nodos E y F.
+    \item \texttt{nodos/nodoE.c} — Muestra PID y ejecuta \texttt{date}.
+    \item \texttt{nodos/nodoF.c} — Muestra PID, ejecuta \texttt{ps -l} y crea Nodo G.
+    \item \texttt{nodos/nodoG.c} — Muestra PID y crea el archivo \texttt{estructura\_procesos}.
+\end{itemize}
+
+\end{document}
