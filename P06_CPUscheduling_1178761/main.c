@@ -45,11 +45,11 @@ int isBuiltin(const char *cmd) {
            strcmp(cmd, "clear")       == 0 || strcmp(cmd, "join>")       == 0 ||
            strcmp(cmd, "join")        == 0 || strcmp(cmd, "copy")        == 0 ||
            strcmp(cmd, "del")         == 0 ||
-           strcmp(cmd, "mkprocess")   == 0 || strcmp(cmd, "crearProc")   == 0 ||
-           strcmp(cmd, "lstprocss")   == 0 || strcmp(cmd, "mostrarProc") == 0 ||
-           strcmp(cmd, "fcfs")        == 0 || strcmp(cmd, "planFCFS")    == 0 ||
-           strcmp(cmd, "sjf")         == 0 || strcmp(cmd, "planSJF")     == 0 ||
-           strcmp(cmd, "rr")          == 0 || strcmp(cmd, "planRR")      == 0;
+           strcmp(cmd, "mkprocess")   == 0 ||
+           strcmp(cmd, "lstprocss")   == 0 ||
+           strcmp(cmd, "fcfs")        == 0 ||
+           strcmp(cmd, "sjf")         == 0 ||
+           strcmp(cmd, "rr")          == 0;
 }
 
 int runBuiltin(char **args) {
@@ -64,23 +64,23 @@ int runBuiltin(char **args) {
     if (strcmp(args[0], "del") == 0) { del(args[1]); return 0; }
 
     /* Comandos de planificacion de CPU */
-    if (strcmp(args[0], "mkprocess") == 0 || strcmp(args[0], "crearProc") == 0) {
+    if (strcmp(args[0], "mkprocess") == 0) {
         cmdMkprocess(&listaProcesosGlobal, args);
         return 0;
     }
-    if (strcmp(args[0], "lstprocss") == 0 || strcmp(args[0], "mostrarProc") == 0) {
+    if (strcmp(args[0], "lstprocss") == 0) {
         cmdLstprocss(&listaProcesosGlobal);
         return 0;
     }
-    if (strcmp(args[0], "fcfs") == 0 || strcmp(args[0], "planFCFS") == 0) {
+    if (strcmp(args[0], "fcfs") == 0) {
         cmdFcfs(&listaProcesosGlobal);
         return 0;
     }
-    if (strcmp(args[0], "sjf") == 0 || strcmp(args[0], "planSJF") == 0) {
+    if (strcmp(args[0], "sjf") == 0) {
         cmdSjf(&listaProcesosGlobal);
         return 0;
     }
-    if (strcmp(args[0], "rr") == 0 || strcmp(args[0], "planRR") == 0) {
+    if (strcmp(args[0], "rr") == 0) {
         cmdRr(&listaProcesosGlobal);
         return 0;
     }

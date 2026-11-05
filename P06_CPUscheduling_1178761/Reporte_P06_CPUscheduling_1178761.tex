@@ -1,0 +1,580 @@
+\documentclass[12pt]{article}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{amsmath, amssymb}
+\usepackage{listings}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstdefinestyle{CStyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    language=C
+}
+\lstset{style=CStyle}
+
+\graphicspath{{Imagenes/}}
+
+% ============================
+% DATOS DEL REPORTE
+% ============================
+\newcommand{\universidad}{Universidad Autónoma de Baja California}
+\newcommand{\facultad}{Facultad de Ingeniería}
+\newcommand{\carrera}{Ingeniería en Computación}
+\newcommand{\materia}{36299 - Sistemas Operativos}
+\newcommand{\docente}{Jesús Albany Armenta García}
+\newcommand{\practica}{P06 - CPU Scheduling}
+\newcommand{\alumno}{1178761 - Jiménez Acevedo Francisco Alejandro}
+\newcommand{\grupo}{261}
+\newcommand{\fecha}{Mexicali, Baja California, 4 de noviembre del 2026}
+
+% ============================
+\begin{document}
+\setlength{\parindent}{0pt}
+
+% ============================
+% PORTADA
+% ============================
+\begin{titlepage}
+\centering
+
+{\bfseries \universidad \par}
+\vspace{0.5cm}
+
+\includegraphics[width=0.35\textwidth]{UABC.png}
+
+\vspace{0.5cm}
+{\large \facultad \par}
+{\large \carrera \par}
+
+\vspace{1.5cm}
+{\large \materia \par}
+
+\vspace{1cm}
+{\large Docente: \docente \par}
+
+\vspace{1cm}
+{\Large \bfseries \practica \par}
+
+\vspace{2cm}
+{\large Alumno: \alumno \par}
+{\large Grupo: \grupo \par}
+
+\vfill
+{\large \fecha}
+
+\end{titlepage}
+
+% ============================
+% INTRODUCCIÓN
+% ============================
+\section{Introducción}
+    El objetivo de la multiprogramación es mantener siempre un proceso en ejecución, maximizando la utilización de la unidad central de procesamiento (CPU). Un núcleo de CPU debe cambiar entre procesos de forma frecuente de tal manera que el usuario pueda interactuar con cada programa mientras se encuentra en ejecución. Para lograrlo, los sistemas operativos cuentan con el \textit{CPU scheduler}, componente del sistema operativo cuya tarea es elegir qué proceso utilizará el CPU de acuerdo con un algoritmo de calendarización. \par
+    En esta práctica se implementan en lenguaje C los tres algoritmos clásicos de planificación: \textit{First-Come, First-Served} (FCFS), \textit{Shortest-Job-First} (SJF) y \textit{Round-Robin} (RR). El programa se integra como un conjunto de comandos dentro de un intérprete de comandos interactivo, donde el usuario puede crear procesos con un nombre y un \textit{burst time} determinado, visualizar la lista de procesos (equivalente a la \textit{ready queue}) y ejecutar la simulación de cualquiera de los tres algoritmos. Para cada ejecución se calculan y reportan el \textit{waiting time} y el \textit{turnaround time} por proceso y sus promedios, junto con una traza que muestra en todo momento qué proceso entra y sale del CPU con su tiempo de calendarización.
+
+% ============================
+% JUSTIFICACIÓN
+% ============================
+\section{Justificación}
+    La calendarización de procesos es uno de los pilares fundamentales de los sistemas operativos, ya que de ella depende directamente el desempeño percibido por el usuario: la rapidez de respuesta, la cantidad de trabajos completados por unidad de tiempo y la equidad con que se distribuye el tiempo del procesador. Comprender en profundidad los algoritmos de despacho permite al ingeniero en computación analizar por qué un sistema se comporta de determinada manera bajo carga y evaluar objetivamente las métricas de desempeño que caracterizan a cada algoritmo. \par
+    La implementación práctica de FCFS, SJF y Round-Robin justifica su relevancia formativa al exigir la traducción de conceptos teóricos (colas FIFO, selección por menor ráfaga, preemptividad y \textit{time quantum}) a código C concreto y verificable. Además, el cálculo del \textit{waiting time} y el \textit{turnaround time} por proceso y en promedio obliga a llevar un registro riguroso de los instantes de llegada, inicio y finalización de cada proceso, consolidando el modelado del ciclo de vida de un proceso. Finalmente, integrar estos algoritmos como comandos de un intérprete de comandos permite experimentar de forma interactiva: crear una cola de procesos, observar su estado, ejecutar la simulación y validar los resultados con pruebas manuales, desarrollando actitud crítica y disposición por el estudio.
+
+% ============================
+% OBJETIVOS
+% ============================
+\newpage
+\section{Objetivos}
+    \subsection{Objetivo General}
+        \begin{itemize}
+            \item Implementar los algoritmos de las técnicas de calendarización de procesos en CPU mediante la elaboración de un programa para comprender el funcionamiento de los mismos, mostrando actitud crítica y disposición por el estudio.
+        \end{itemize}
+
+    \subsection{Objetivos Específicos}
+        \begin{itemize}
+            \item Diseñar una estructura de Bloque de Control de Proceso (\textit{PCB}) que almacene los campos necesarios para la simulación: \texttt{pid}, nombre, \texttt{burstTime}, \texttt{remainingTime}, \texttt{arrivalTime}, \texttt{startTime}, \texttt{finishTime}, \texttt{waitingTime}, \texttt{turnaroundTime} y estado del proceso.
+            \item Implementar el comando \texttt{mkprocess [nombre] [burstTime]} para crear procesos y almacenarlos en una lista estática equivalente a la \textit{ready queue}.
+            \item Implementar el comando \texttt{lstprocss} para desplegar todos los procesos presentes en la lista con su PID, nombre, \textit{burst time} y estado.
+            \item Implementar el algoritmo \textit{First-Come, First-Served} (FCFS) como despacho no-preemptivo de orden FIFO.
+            \item Implementar el algoritmo \textit{Shortest-Job-First} (SJF) no-preemptivo, seleccionando el proceso listo de menor \texttt{burstTime} y resolviendo empates con FCFS.
+            \item Implementar el algoritmo \textit{Round-Robin} (RR) con un \textit{time quantum} igual a 10 unidades de tiempo y una cola circular de procesos.
+            \item Calcular el \textit{waiting time} y el \textit{turnaround time} de cada proceso y sus promedios, reportándolos en una tabla de resultados.
+            \item Mostrar en pantalla una traza con el nombre del proceso que entra y sale del CPU junto con el tiempo de calendarización en cada asignación.
+            \item Vaciar automáticamente la lista de procesos cada vez que se ejecute uno de los algoritmos, conforme lo exige la especificación.
+        \end{itemize}
+
+% ============================
+% PROBLEMÁTICA
+% ============================
+\newpage
+\section{Problemática}
+La práctica solicita realizar un programa en C que funcione como una terminal de comandos la cual permita crear, eliminar y simular los algoritmos de \textit{CPU Scheduling}. Los tres algoritmos a implementar son:
+    \begin{enumerate}
+        \item \textbf{\textit{First-Come, First-Served} (FCFS):} El primer proceso que solicite primero el CPU es al que se le asigna. Su implementación es fácilmente manejable con una estructura FIFO: cuando un CPU se encuentre disponible, este se le asignará al proceso que se encuentre al inicio de la FIFO. Si un nuevo proceso llega a la \textit{ready queue}, este se encontrará al final de la cola.
+        \item \textbf{\textit{Shortest-Job-First} (SJF):} Cuando un CPU está disponible, este es asignado al proceso con el menor \textit{CPU burst}. Si llega a haber más de un proceso con el mismo tiempo, se utiliza FCFS para el desempate. La calendarización de este algoritmo depende de la duración del \textit{CPU burst} del siguiente proceso a ser asignado al procesador.
+        \item \textbf{\textit{Round-Robin} (RR):} Presenta un funcionamiento similar a FCFS, pero permite al sistema cambiar entre procesos (\textit{preemption}). Se define una unidad de tiempo llamada \textit{time quantum} y la \textit{ready queue} es tratada como una cola circular. El \textit{CPU scheduler} asigna un proceso a un CPU en un intervalo de tiempo igual a 1 \textit{time quantum}. Si el \textit{burst time} del proceso es menor al \textit{time quantum}, este liberará al CPU voluntariamente; de ser mayor, se hace un \textit{context switch} y el proceso se coloca al final de la \textit{ready queue}.
+    \end{enumerate}
+    Sobre el comportamiento esperado del intérprete:
+    \begin{enumerate}
+        \setcounter{enumi}{3}
+        \item \textbf{Creación de procesos:} El usuario en la terminal podrá crear un proceso, el cual se almacenará en una lista (equivalente a la \textit{ready queue}) por medio del comando \texttt{mkprocess}, seguido de un nombre que identifique al proceso y su \textit{burst time}.
+        \item \textbf{Listado de procesos:} Se deberá programar el comando \texttt{lstprocss}, el cual mostrará todos los procesos en la lista.
+        \item \textbf{Simulación de los algoritmos:} Se programarán tres comandos, uno para cada algoritmo, que permitan simular la calendarización de procesos, definiendo un \textit{time quantum} para RR igual a 10 ut.
+        \item \textbf{Métricas y trazas:} Para cada algoritmo se deberá calcular el \textit{waiting} y \textit{turnaround time} por proceso y promedio, con la finalidad de reportar dichas métricas en una tabla. Adicionalmente, cada que un proceso libere o sea asignado al CPU deberá mostrarse en pantalla el nombre del proceso que entra y sale del CPU, en conjunto con el tiempo de calendarización.
+        \item \textbf{Vaciado de la lista:} Cada vez que uno de estos algoritmos se ejecute, la lista de procesos se vaciará.
+    \end{enumerate}
+
+% ============================
+% MARCO TEÓRICO
+% ============================
+\newpage
+\section{Marco Teórico}
+    \subsection{Multiprogramación y \textit{CPU Scheduler}}
+    En una computadora con un solo procesador, la CPU solo puede ejecutar instrucciones de un proceso a la vez; sin embargo, el sistema operativo multiprograma múltiples procesos en la memoria principal para que, mientras un proceso espera una operación de E/S, otro pueda utilizar el procesador. Esta alternancia exige un componente del sistema operativo denominado \textit{CPU scheduler}, encargado de seleccionar de entre los procesos que están listos para ejecutarse (\textit{ready queue}) cuál obtendrá el control de la CPU según un algoritmo de calendarización. \par
+    La multiplicación de procesos trae consigo la necesidad de un despacho eficiente: cada cambio de proceso implica un \textit{context switch}, es decir, guardar el contexto del proceso que sale (registros, contador de programa, pila) y restaurar el del proceso que entra, lo cual consume tiempo de CPU que no se dedica a la ejecución útil. Por ello, los algoritmos de calendarización buscan maximizar la utilización del procesador y minimizar el tiempo de espera promedio de los procesos.
+
+    \subsection{Criterios de Evaluación del Desempeño}
+    Para comparar distintos algoritmos de calendarización se utilizan métricas cuantitativas, entre las que destacan:
+    \begin{itemize}
+        \item \textbf{Utilización de CPU:} Porcentaje del tiempo en que el procesador permanece ocupado ejecutando procesos.
+        \item \textbf{\textit{Throughput}:} Número de procesos completados por unidad de tiempo.
+        \item \textbf{\textit{Turnaround time}:} Intervalo total desde la llegada de un proceso hasta su finalización; es el tiempo que un proceso permanece en el sistema.
+        \item \textbf{\textit{Waiting time}:} Cantidad de tiempo que un proceso permanece en la \textit{ready queue} sin recibir el CPU, es decir, el tiempo total de espera excluyendo su ejecución.
+        \item \textbf{\textit{Response time}:} Tiempo desde la llegada de un proceso hasta la primera vez que se le asigna el CPU.
+    \end{itemize}
+    En esta práctica se calculan específicamente el \textit{waiting time} y el \textit{turnaround time} por proceso y sus promedios.
+
+    \subsection{\textit{First-Come, First-Served} (FCFS)}
+    Es el algoritmo de despacho más sencillo: el proceso que solicita primero el CPU es al que se le asigna. Su implementación se maneja con una estructura FIFO (\textit{First-In, First-Out}); cuando el CPU se encuentra disponible, se le asigna el proceso que se encuentra al inicio de la cola, y un proceso recién llegado se coloca al final de la \textit{ready queue}. El despacho es no-preemptivo: una vez asignado el CPU, el proceso lo conserva hasta completar su ráfaga completa. \par
+    FCFS es justo en el sentido de que respeta el orden de llegada, pero es sensible al orden de los procesos: si llega primero un proceso de larga ráfaga, todos los demás deben esperar (el conocido efecto de la \textit{cola de convoy}).
+
+    \subsection{\textit{Shortest-Job-First} (SJF)}
+    Cuando un CPU está disponible, este es asignado al proceso con el menor \textit{CPU burst}. Si hay más de un proceso con el mismo tiempo de ráfaga, se utiliza FCFS para el desempate. La calendarización de este algoritmo depende de la duración del \textit{CPU burst} del siguiente proceso a ser asignado al procesador. \par
+    SJF es óptimo en términos de tiempo promedio de espera para un conjunto dado de procesos, aunque en la práctica resulta difícil conocer de antemano la duración exacta de la ráfaga siguiente, por lo que suele estimarse con la duración de ráfagas anteriores. En esta práctica se implementa en su versión no-preemptiva: una vez iniciado un proceso, este ejecuta su ráfaga completa sin interrupciones.
+
+    \subsection{\textit{Round-Robin} (RR)}
+    Presenta un funcionamiento similar a FCFS, pero permite al sistema cambiar entre procesos mediante \textit{preemption}. Se define una unidad de tiempo llamada \textit{time quantum} y la \textit{ready queue} se trata como una cola circular. El \textit{CPU scheduler} asigna un proceso a un CPU en un intervalo de tiempo igual a 1 \textit{time quantum}. \par
+    El \textit{CPU scheduler} selecciona el primer proceso de la \textit{ready queue}, define un temporizador para interrumpirlo después de un \textit{time quantum} y lo aloja en el procesador:
+    \begin{itemize}
+        \item Si el \textit{burst time} del proceso es menor que 1 \textit{time quantum}, este liberará al CPU voluntariamente.
+        \item De ser mayor, se realiza un \textit{context switch} y el proceso se coloca al final de la \textit{ready queue}.
+    \end{itemize}
+    El tamaño del \textit{quantum} es crítico: con \textit{quanta} muy cortos el sistema dedica demasiado tiempo a los \textit{context switches}, y con \textit{quanta} muy largos el algoritmo se comporta como FCFS. En esta práctica se define un \textit{time quantum} igual a 10 unidades de tiempo.
+
+    \subsection{Métricas de Desempeño por Proceso}
+    Durante la simulación se registran los instantes clave de cada proceso para derivar sus métricas:
+    \begin{align}
+        \text{Turnaround Time} &= \text{Finish Time} - \text{Arrival Time} \\
+        \text{Waiting Time} &= \text{Turnaround Time} - \text{Burst Time}
+    \end{align}
+    donde el \textit{finish time} es el instante en que el proceso completa su última ejecución en el CPU y el \textit{arrival time} es el instante en que ingresa a la \textit{ready queue}. Los promedios de ambas métricas se obtienen dividiendo la suma de los valores individuales entre el número de procesos de la simulación.
+
+% ============================
+% DESARROLLO / PROCEDIMIENTO
+% ============================
+\newpage
+\section{Desarrollo}
+    Para resolver la problemática planteada se extendió el intérprete de comandos desarrollado previamente en la asignatura, incorporando los módulos necesarios para la simulación de calendarización de CPU en la carpeta \texttt{P06\_CPUscheduling\_1178761/}. Los módulos nuevos se organizaron en tres capas con una única responsabilidad cada una: \texttt{process/} define los tipos de datos (PCB y lista de procesos), \texttt{scheduler/} contiene la lógica de los tres algoritmos y las utilidades comunes, y \texttt{shell\_cmd/} implementa los comandos que exponen dicha lógica al intérprete.
+
+    \subsection{Bloque de Control de Proceso (\texttt{process/pcb.h})}
+    Se definió la estructura \texttt{PCB} como representación de cada proceso de la simulación, con los campos de métricas de sistemas operativos en inglés (\textit{camelCase}) y los atributos de identificación en español:
+    \begin{lstlisting}[caption={Estructura del Bloque de Control de Proceso en pcb.h.}]
+typedef enum {
+    ESTADO_NUEVO,
+    ESTADO_LISTO,
+    ESTADO_EJECUCION,
+    ESTADO_TERMINADO
+} EstadoProceso;
+
+typedef struct {
+    int pid;                    /* Identificador unico */
+    char nombre[MAX_PROC_NAME]; /* Nombre del proceso */
+    int burstTime;              /* Rafaga de CPU requerida */
+    int remainingTime;          /* Rafaga restante (para RR) */
+    int arrivalTime;            /* Tiempo de llegada a la cola */
+    int startTime;              /* Instante de primer acceso a CPU */
+    int finishTime;             /* Instante de finalizacion */
+    int waitingTime;            /* Turnaround - Burst */
+    int turnaroundTime;         /* Finish - Arrival */
+    EstadoProceso estado;       /* Estado actual */
+} PCB;
+    \end{lstlisting}
+
+    \subsection{Lista de Procesos: la \textit{Ready Queue} (\texttt{process/lista\_procesos})}
+    La lista se implementa con un arreglo estático de hasta 256 procesos, evitando el uso de \texttt{malloc}/\texttt{free} y posibles fugas de memoria:
+    \begin{lstlisting}[caption={Estructura de la lista de procesos en lista_procesos.h.}]
+#define MAX_LISTA 256
+
+typedef struct {
+    PCB datos[MAX_LISTA];   /* Procesos de la ready queue */
+    int contador;           /* Cantidad de procesos */
+    int siguientePid;       /* PID auto-incremental */
+} ListaProcesos;
+    \end{lstlisting}
+    El módulo \texttt{lista\_procesos.c} proporciona las operaciones \texttt{listaInicializar()}, \texttt{listaAgregar()}, \texttt{listaMostrar()}, \texttt{listaVaciar()} y \texttt{listaTieneElementos()}. La función de inserción valida el cupo de la lista y el \textit{burst time}, asigna el PID auto-incremental e inicializa todas las métricas del nuevo proceso:
+    \begin{lstlisting}[caption={Insercion de un proceso nuevo en la lista (lista_procesos.c).}]
+int listaAgregar(ListaProcesos *lista, const char *nombre, int burstTime) {
+    if (!lista || !nombre) return -1;
+    if (lista->contador >= MAX_LISTA) {
+        printf("Error: lista de procesos llena (maximo %d procesos).\n", MAX_LISTA);
+        return -1;
+    }
+    if (burstTime <= 0) {
+        printf("Error: el burst time debe ser mayor a 0.\n");
+        return -1;
+    }
+    PCB *p = &lista->datos[lista->contador];
+    p->pid = lista->siguientePid++;
+    strncpy(p->nombre, nombre, MAX_PROC_NAME - 1);
+    p->nombre[MAX_PROC_NAME - 1] = '\0';
+    p->burstTime = burstTime;
+    p->remainingTime = burstTime;
+    p->arrivalTime = 0;
+    p->startTime = -1;
+    p->finishTime = -1;
+    p->waitingTime = 0;
+    p->turnaroundTime = 0;
+    p->estado = ESTADO_LISTO;
+    lista->contador++;
+    return p->pid;
+}
+    \end{lstlisting}
+
+\newpage
+    \subsection{Utilidades Comunes (\texttt{scheduler/sched\_util})}
+    El módulo \texttt{sched\_util.c} centraliza la lógica compartida por los tres algoritmos para evitar duplicación de código: la copia profunda de la lista (\texttt{copiarLista()}), el reseteo de métricas, el cálculo de métricas, las trazas de entrada y salida del CPU y la tabla de resultados con promedios:
+    \begin{lstlisting}[caption={Calculo de metricas y trazas en sched_util.c.}]
+void calcularMetricas(PCB *datos, int contador) {
+    for (int i = 0; i < contador; i++) {
+        if (datos[i].finishTime >= 0 && datos[i].arrivalTime >= 0)
+            datos[i].turnaroundTime = datos[i].finishTime - datos[i].arrivalTime;
+        if (datos[i].turnaroundTime >= 0 && datos[i].burstTime >= 0) {
+            datos[i].waitingTime = datos[i].turnaroundTime - datos[i].burstTime;
+            if (datos[i].waitingTime < 0) datos[i].waitingTime = 0;
+        }
+    }
+}
+
+void trazaEntrada(int tiempoActual, const char *nombre,
+                  int burstORestante, int quantum) {
+    if (quantum > 0)
+        printf("[Tiempo %d] Entra a CPU: %s (remaining=%d, quantum=%d)\n",
+               tiempoActual, nombre, burstORestante, quantum);
+    else
+        printf("[Tiempo %d] Entra a CPU: %s (burstTime=%d)\n",
+               tiempoActual, nombre, burstORestante);
+}
+
+void trazaSalida(int tiempoActual, const char *nombre, const char *detalle) {
+    if (detalle && detalle[0] != '\0')
+        printf("[Tiempo %d] Sale de CPU:  %s (%s)\n",
+               tiempoActual, nombre, detalle);
+    else
+        printf("[Tiempo %d] Sale de CPU:  %s\n", tiempoActual, nombre);
+}
+    \end{lstlisting}
+    La función \texttt{mostrarResultados()} invoca a \texttt{calcularMetricas()} y despliega la tabla con PID, proceso, \textit{burst time}, \textit{waiting time}, \textit{turnaround} y \textit{finish time}, además de los promedios de ambas métricas.
+
+    \subsection{Algoritmo FCFS (\texttt{scheduler/fcfs.c})}
+    El despacho \textit{First-Come, First-Served} recorre la lista en orden de llegada sin preemptividad: si el reloj va retrasado respecto al \textit{arrival time} del proceso, este se avanza; luego se ejecuta la ráfaga completa, se registra el \textit{finish time} y se emiten las trazas de entrada y salida:
+    \begin{lstlisting}[caption={Nucleo del algoritmo FCFS no-preemptivo.}]
+int tiempoActual = 0;
+for (int i = 0; i < contador; i++) {
+    if (datos[i].arrivalTime > tiempoActual)
+        tiempoActual = datos[i].arrivalTime;
+    datos[i].startTime = tiempoActual;
+    datos[i].estado = ESTADO_EJECUCION;
+    trazaEntrada(tiempoActual, datos[i].nombre, datos[i].burstTime, 0);
+    tiempoActual += datos[i].burstTime;
+    datos[i].finishTime = tiempoActual;
+    datos[i].estado = ESTADO_TERMINADO;
+    trazaSalida(tiempoActual, datos[i].nombre, NULL);
+}
+mostrarResultados(datos, contador);
+listaVaciar(listaOriginal);
+    \end{lstlisting}
+
+    \subsection{Algoritmo SJF No Preemptivo (\texttt{scheduler/sjf.c})}
+    En cada paso, el algoritmo busca entre los procesos que ya llegaron y están en estado \texttt{ESTADO\_LISTO} el de menor \texttt{burstTime}; si hay empate, gana el primero encontrado (desempate FCFS). Si ningún proceso está listo en el tiempo actual, el reloj salta directamente al siguiente \texttt{arrivalTime} en lugar de avanzar de uno en uno:
+    \begin{lstlisting}[caption={Seleccion del proceso de menor ráfaga en SJF.}]
+while (completados < contador) {
+    int mejorIdx = -1, menorBurst = -1;
+    for (int i = 0; i < contador; i++) {
+        if (datos[i].estado == ESTADO_LISTO &&
+            datos[i].arrivalTime <= tiempoActual) {
+            if (menorBurst == -1 || datos[i].burstTime < menorBurst) {
+                menorBurst = datos[i].burstTime;
+                mejorIdx = i;
+            }
+        }
+    }
+    if (mejorIdx == -1) { /* nadie listo: saltar al proximo llegada */
+        /* ... avanzar tiempoActual al proximo arrivalTime ... */
+        continue;
+    }
+    /* Ejecutar la ráfaga completa del proceso elegido */
+    tiempoActual += datos[mejorIdx].burstTime;
+    datos[mejorIdx].finishTime = tiempoActual;
+    datos[mejorIdx].estado = ESTADO_TERMINADO;
+    trazaSalida(tiempoActual, datos[mejorIdx].nombre, NULL);
+    completados++;
+}
+    \end{lstlisting}
+
+\newpage
+    \subsection{Algoritmo Round-Robin (\texttt{scheduler/rr.c})}
+    Round-Robin utiliza un \textit{time quantum} de 10 unidades de tiempo definido en la cabecera \texttt{rr.h} (\texttt{QUANTUM\_RR}) y una cola circular implementada con un arreglo de índices y punteros circulares \texttt{frente}, \texttt{final} y \texttt{enCola}, sin mover elementos en memoria:
+    \begin{lstlisting}[caption={Cola circular y ejecución por quantum en RR.}]
+#define MAX_COLA_RR 1024
+int cola[MAX_COLA_RR];
+int frente = 0, final = 0, enCola = 0;
+
+/* Encolar todos los procesos iniciales */
+for (int i = 0; i < contador; i++) {
+    cola[final] = i;
+    final = (final + 1) % MAX_COLA_RR;
+    enCola++;
+}
+
+while (completados < contador) {
+    int idx = cola[frente];
+    frente = (frente + 1) % MAX_COLA_RR;
+    enCola--;
+
+    int ejecucion = (datos[idx].remainingTime < QUANTUM_RR)
+                        ? datos[idx].remainingTime : QUANTUM_RR;
+    trazaEntrada(tiempoActual, datos[idx].nombre,
+                 datos[idx].remainingTime, ejecucion);
+    tiempoActual += ejecucion;
+    datos[idx].remainingTime -= ejecucion;
+
+    if (datos[idx].remainingTime == 0) {
+        datos[idx].finishTime = tiempoActual;
+        datos[idx].estado = ESTADO_TERMINADO;
+        trazaSalida(tiempoActual, datos[idx].nombre, "TERMINADO");
+        completados++;
+    } else {
+        datos[idx].estado = ESTADO_LISTO;
+        trazaSalida(tiempoActual, datos[idx].nombre, "vuelve a cola");
+        cola[final] = idx;
+        final = (final + 1) % MAX_COLA_RR;
+        enCola++;
+    }
+}
+    \end{lstlisting}
+    Si la ráfaga restante es menor que el \textit{quantum}, el proceso libera el CPU voluntariamente; de lo contrario se corta en el límite del \textit{quantum}, se genera un \textit{context switch} y el proceso vuelve al final de la cola circular.
+
+    \subsection{Comandos de Simulación (\texttt{shell\_cmd/cmd\_procesos})}
+    El módulo \texttt{cmd\_procesos.c} implementa los cinco comandos nuevos del intérprete. \texttt{mkprocess} valida los argumentos, convierte el \textit{burst time} con \texttt{atoi()} y delega la inserción en la lista; los comandos de algoritmo simplemente invocan la función correspondiente del módulo \texttt{scheduler/}:
+    \begin{lstlisting}[caption={Implementacion del comando mkprocess en cmd_procesos.c.}]
+void cmdMkprocess(ListaProcesos *lista, char **args) {
+    if (!lista) return;
+    if (!args[1] || !args[2]) {
+        printf("Uso: mkprocess [nombre] [burstTime]\n");
+        printf("Ejemplo: mkprocess P1 10\n");
+        return;
+    }
+    int burstTime = atoi(args[2]);
+    if (burstTime <= 0) {
+        printf("Error: el burstTime debe ser un numero mayor a 0.\n");
+        return;
+    }
+    int pid = listaAgregar(lista, args[1], burstTime);
+    if (pid >= 0)
+        printf("Proceso '%s' creado con PID %d y burst time %d\n",
+               args[1], pid, burstTime);
+}
+    \end{lstlisting}
+    La siguiente tabla resume los comandos agregados:
+    \begin{center}
+    \begin{tabular}{|l|l|}
+        \hline
+        \textbf{Comando} & \textbf{Función} \\
+        \hline
+        \texttt{mkprocess [nombre] [burstTime]} & Agrega proceso a la lista \\
+        \texttt{lstprocss} & Muestra los procesos en la lista \\
+        \texttt{fcfs} & Simula FCFS \\
+        \texttt{sjf} & Simula SJF \\
+        \texttt{rr} & Simula Round-Robin (quantum=10) \\
+        \hline
+    \end{tabular}
+    \end{center}
+
+    \subsection{Integración con el Intérprete (\texttt{main.c})}
+    Se modificaron únicamente las funciones de despacho del intérprete para reconocer los cinco comandos nuevos. La lista global \texttt{listaProcesosGlobal} se inicializa en \texttt{main()} y se conserva entre comandos, ya que los \textit{built-ins} sin tubería se ejecutan en el proceso padre:
+    \begin{lstlisting}[caption={Despacho de los nuevos comandos en main.c.}]
+/* Comandos de planificacion de CPU */
+if (strcmp(args[0], "mkprocess") == 0) {
+    cmdMkprocess(&listaProcesosGlobal, args);
+    return 0;
+}
+if (strcmp(args[0], "lstprocss") == 0) {
+    cmdLstprocss(&listaProcesosGlobal);
+    return 0;
+}
+if (strcmp(args[0], "fcfs") == 0) {
+    cmdFcfs(&listaProcesosGlobal); return 0;
+}
+if (strcmp(args[0], "sjf") == 0) {
+    cmdSjf(&listaProcesosGlobal); return 0;
+}
+if (strcmp(args[0], "rr") == 0) {
+    cmdRr(&listaProcesosGlobal); return 0;
+}
+    \end{lstlisting}
+    Cada algoritmo opera sobre una copia de la lista mediante \texttt{copiarLista()} y, al finalizar la simulación, invoca \texttt{listaVaciar()} para vaciar la lista original, conforme lo exige la especificación de la práctica.
+
+% ============================
+% RESULTADOS
+% ============================
+\newpage
+\section{Resultados}
+    En esta sección se presentan las evidencias gráficas obtenidas durante las pruebas del programa: primero la creación de los procesos que integran la \textit{ready queue} para cada algoritmo y después la salida de cada simulación con sus trazas de entrada y salida del CPU, la tabla de \textit{waiting time} y \textit{turnaround time} y los promedios calculados. Finalmente se muestran las capturas de las pruebas generales de funcionamiento del intérprete.
+
+    \subsection{Creación de Procesos para la Simulación FCFS}
+    La Figura \ref{fig:fcfs_creacion} evidencia el uso del comando \texttt{mkprocess} para poblar la lista de procesos y el listado de la \textit{ready queue} con el comando \texttt{lstprocss} antes de ejecutar el algoritmo FCFS.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{fcfs_creacion.png}
+        \caption{Creación de procesos con \texttt{mkprocess} y listado con \texttt{lstprocss} para FCFS.}
+        \label{fig:fcfs_creacion}
+    \end{figure}
+
+    \subsection{Creación de Procesos para la Simulación SJF}
+    La Figura \ref{fig:sjf_creacion} muestra la creación de los procesos que participarán en la simulación de \textit{Shortest-Job-First}, junto con su estado en la lista antes del despacho.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{sjf_creacion.png}
+        \caption{Creación de procesos y listado previo para la simulación SJF.}
+        \label{fig:sjf_creacion}
+    \end{figure}
+
+    \subsection{Creación de Procesos para la Simulación Round-Robin}
+    La Figura \ref{fig:rr_creacion} presenta la formación de la cola de procesos que será atendida con el algoritmo \textit{Round-Robin} y su \textit{time quantum} de 10 unidades de tiempo.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{rr_creacion.png}
+        \caption{Creación de procesos y listado previo para la simulación RR.}
+        \label{fig:rr_creacion}
+    \end{figure}
+
+    \subsection{Resultados de la Simulación FCFS}
+    La Figura \ref{fig:fcfs_resultado} muestra la salida de la simulación FCFS: la traza de entrada y salida de cada proceso al CPU con su tiempo de calendarización, la tabla de métricas por proceso y los promedios de \textit{waiting time} y \textit{turnaround time}.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{fcfs_resultado.png}
+        \caption{Trazas y métricas de la simulación FCFS.}
+        \label{fig:fcfs_resultado}
+    \end{figure}
+
+    \subsection{Resultados de la Simulación SJF}
+    La Figura \ref{fig:sjf_resultado} ilustra el resultado de la simulación SJF no-preemptivo, donde se observa el orden de despacho por menor \textit{burst time}, las trazas al CPU y la tabla de resultados con sus promedios.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{sjf_resultado.png}
+        \caption{Trazas y métricas de la simulación SJF.}
+        \label{fig:sjf_resultado}
+    \end{figure}
+
+    \subsection{Resultados de la Simulación Round-Robin}
+    La Figura \ref{fig:rr_resultado} presenta la salida del algoritmo Round-Robin, evidenciando la alternancia de procesos cada 10 unidades de tiempo, las trazas de entrada y salida del CPU y la tabla final de métricas con promedios.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{rr_resultado.png}
+        \caption{Trazas y métricas de la simulación Round-Robin.}
+        \label{fig:rr_resultado}
+    \end{figure}
+
+    \subsection{Capturas de las Pruebas Realizadas}
+    Las Figuras \ref{fig:pruebas} a \ref{fig:pruebas_3} recopilan las pruebas generales de funcionamiento del intérprete: compilación con el \texttt{Makefile}, validación de argumentos de \texttt{mkprocess}, comportamiento de \texttt{lstprocss} con la lista vacía, el vaciado automático de la lista después de cada simulación y la guía del comando \texttt{info} actualizada con los comandos de planificación.
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{pruebas.png}
+        \caption{Prueba 1: compilación y verificación de comandos de planificación.}
+        \label{fig:pruebas}
+    \end{figure}
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{pruebas_2.png}
+        \caption{Prueba 2: validación de errores y vaciado automático de la lista.}
+        \label{fig:pruebas_2}
+    \end{figure}
+    \begin{figure}[!h]
+        \centering
+        \includegraphics[width=0.95\textwidth]{pruebas_3.png}
+        \caption{Prueba 3: guía \texttt{info} y sesión completa de simulación.}
+        \label{fig:pruebas_3}
+    \end{figure}
+
+% ============================
+% CONCLUSIONES
+% ============================
+\newpage
+\section{Conclusiones}
+    La implementación de los algoritmos FCFS, SJF y Round-Robin permitió consolidar de forma práctica los fundamentos teóricos de la calendarización de procesos en CPU. Traducir cada algoritmo a C evidenció cómo el mismo conjunto de procesos produce órdenes de despacho y métricas de desempeño distintas según la política utilizada, reforzando la comprensión de conceptos como \textit{preemption}, \textit{context switch} y \textit{time quantum}. \par
+    El algoritmo FCFS demostró su simplicidad al recorrer la lista en orden FIFO sin interrupciones, pero también su sensibilidad al orden de llegada de los procesos. SJF, al seleccionar en cada paso el proceso de menor \texttt{burstTime}, ilustró la búsqueda del tiempo promedio de espera mínimo, junto con la necesidad de una política de desempate (FCFS) ante ráfagas iguales. Round-Robin, con su cola circular y \textit{quantum} de 10 unidades de tiempo, permitió observar en la traza la alternancia equitativa entre procesos y cómo los que exceden el \textit{quantum} generan un \textit{context switch} y vuelven al final de la cola. \par
+    El cálculo del \textit{waiting time} y el \textit{turnaround time} por proceso y en promedio, reportado en tabla junto con las trazas de entrada y salida al CPU, mostró la importancia de registrar con precisión los instantes de llegada, inicio y finalización de cada proceso para evaluar objetivamente el desempeño de un algoritmo. \par
+    Finalmente, integrar los algoritmos como comandos de un intérprete de comandos reforzó la práctica de modularidad: separar los tipos de datos (\texttt{process/}), la lógica de despacho (\texttt{scheduler/}) y la interfaz de usuario (\texttt{shell\_cmd/}) facilitó el desarrollo, la depuración y la adición de nuevos algoritmos sin modificar el resto del sistema. En conjunto, la práctica fortaleció las bases para comprender cómo un sistema operativo decide qué proceso ejecuta en cada instante.
+
+% ============================
+% REFERENCIAS
+% ============================
+\begin{thebibliography}{9}
+\bibitem{silberschatz}
+A. Silberschatz, P. Galvin and G. Gagne,
+\textit{Operating System Concepts}, 10th ed.
+John Wiley \& Sons, Inc., 2018.
+\end{thebibliography}
+
+% ============================
+% ANEXO
+% ============================
+\newpage
+\section*{Anexo: Código Fuente del Proyecto}
+
+El código fuente completo de la práctica se encuentra alojado en el repositorio oficial de la asignatura en GitHub:
+
+\begin{center}
+    \url{https://github.com/FranckoJimAce19/Sistemas-Operativos-UABC}
+\end{center}
+
+Dentro de la carpeta del proyecto, \texttt{P06\_CPUscheduling\_1178761/}, se encuentran organizados los siguientes archivos de código fuente:
+
+\begin{itemize}
+    \item \texttt{main.c} — Punto de entrada del intérprete; administra el bucle interactivo, la lista global de procesos y el despacho de los comandos de planificación de CPU.
+    \item \texttt{main.h} — Cabecera general del proyecto; incluye bibliotecas estándar, macros de constantes, colores ANSI y prototipos compartidos.
+    \item \texttt{Makefile} — Archivo de configuración con reglas de compilación modular (\texttt{-Wall -Wextra -std=c11}) y limpieza de binarios (\texttt{clean}).
+    \item \texttt{process/pcb.h} — Definición del Bloque de Control de Proceso y del enum de estados del proceso.
+    \item \texttt{process/lista\_procesos.h} y \texttt{process/lista\_procesos.c} — Lista estática de hasta 256 procesos que funciona como \textit{ready queue}: inicializar, agregar, mostrar y vaciar.
+    \item \texttt{scheduler/sched\_util.h} y \texttt{scheduler/sched\_util.c} — Utilidades comunes: copia de la lista, reseteo y cálculo de métricas, trazas de entrada/salida del CPU y tabla de resultados con promedios.
+    \item \texttt{scheduler/fcfs.h} y \texttt{scheduler/fcfs.c} — Algoritmo \textit{First-Come, First-Served} no-preemptivo.
+    \item \texttt{scheduler/sjf.h} y \texttt{scheduler/sjf.c} — Algoritmo \textit{Shortest-Job-First} no-preemptivo con desempate FCFS.
+    \item \texttt{scheduler/rr.h} y \texttt{scheduler/rr.c} — Algoritmo \textit{Round-Robin} con cola circular y \texttt{QUANTUM\_RR} definido en 10 unidades de tiempo.
+    \item \texttt{shell\_cmd/cmd\_procesos.h} y \texttt{shell\_cmd/cmd\_procesos.c} — Implementación de los comandos \texttt{mkprocess}, \texttt{lstprocss}, \texttt{fcfs}, \texttt{sjf} y \texttt{rr}.
+    \item \texttt{commands/} — Comandos generales del intérprete reutilizados de prácticas anteriores (\texttt{cd}, \texttt{sdir}, \texttt{clear}, \texttt{copy}, \texttt{del}, \texttt{join}, \texttt{info}, \texttt{exit}), el analizador sintáctico (\texttt{parser.c}) y el gestor de tuberías (\texttt{pipeline.c}).
+    \item \texttt{commands/info.txt} — Guía de ayuda unificada del intérprete, actualizada con los comandos de CPU Scheduling.
+\end{itemize}
+
+\end{document}
