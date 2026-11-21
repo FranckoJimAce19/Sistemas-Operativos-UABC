@@ -1,0 +1,26 @@
+=========================================================
+          INTERPRETE DE COMANDOS — Informacion
+=========================================================
+COMANDO                       DESCRIPCION
+---------------------------------------------------------
+join [archivo]                Muestra el contenido de un archivo
+join> [archivo]               Crea un archivo en modo texto (termina con $)
+copy [origen] [destino]       Copia un archivo a otro destino
+del [archivo]                 Elimina un archivo
+cd [directorio]               Cambia el directorio de trabajo
+sdir                          Muestra el directorio actual
+clear                         Limpia la pantalla
+info                          Muestra esta ayuda
+exit                          Termina el interprete
+cmd1 | cmd2 | ...             Canaliza la salida de un comando hacia otro
+mkprocess [nombre] [burst]    Crea un proceso en la lista (ready queue)
+lstprocss                     Muestra los procesos en la lista
+fcfs                          Simula algoritmo First-Come First-Served
+sjf                           Simula algoritmo Shortest Job First
+rr                            Simula algoritmo Round-Robin (quantum=10 ut)
+knn [dir] [hilos]             Busqueda de hiper-parametros K-NN con hilos
+                                (dir por defecto: data; hilos 1-3, si se
+                                omite reporta las tres corridas)
+                                Espera en <dir> los 4 CSV del dataset
+                                (generalos con: make datos)
+=========================================================
