@@ -1,0 +1,50 @@
+# Formato de este archivo (lo interpreta commands/info.c):
+#   [Titulo]                    titulo de una categoria
+#   sintaxis | descripcion      un comando
+#   > texto                     nota en gris
+#   cualquier otra linea        se imprime tal cual
+#   lineas con '#' al inicio    comentarios (no se muestran)
+
+[Archivos]
+join <archivo>                        | Muestra el contenido de un archivo
+join> <archivo>                       | Escribe un archivo (termina con $)
+copy <origen> <destino>               | Copia un archivo
+del <archivo> [archivo ...]           | Elimina uno o varios archivos
+
+[Navegacion y terminal]
+cd [directorio | ~ | -]               | Cambia el directorio de trabajo
+sdir                                  | Muestra el directorio actual
+clear                                 | Limpia la pantalla (tambien Ctrl+L)
+
+[Procesos y planificacion de CPU]
+mkprocess <id> <burst time> <bloques> | Crea un proceso en estado NEW
+lstprocess                            | Lista procesos, estados y bloques
+kbill <id>                            | Elimina un proceso (libera su memoria)
+fcfs                                  | Planifica los READY con FCFS
+sjf                                   | Planifica los READY con SJF
+rr                                    | Planifica los READY con Round-Robin
+
+[Memoria (asignacion contigua)]
+alloc <id> <first | best | worst>     | Carga un proceso NEW a memoria
+free <id>                             | Saca de memoria un proceso READY
+mstatus                               | Muestra el estado de la memoria
+compact                               | Compacta los bloques de memoria
+
+[Analisis de datos]
+knn [directorio] [hilos]              | Busca el mejor k de K-NN con hilos
+
+[Interprete]
+info                                  | Muestra esta ayuda (tambien help)
+history [n | -c]                      | Muestra o borra el historial
+exit                                  | Termina el interprete (o Ctrl+D)
+
+[Comandos del sistema]
+programa [argumentos]                 | Ejecuta ls, ps, grep, cut, etc.
+cmd1 | cmd2 | ...                     | Tuberia de hasta 5 comandos
+
+[Teclado]
+  Flechas arriba/abajo   historial       TAB (x2)   autocompletar / opciones
+  Ctrl+A / Ctrl+E        inicio / fin    Ctrl+U/K   borrar al inicio / al final
+  Ctrl+W                 borrar palabra  Ctrl+L     limpiar pantalla
+  Ctrl+C                 cancelar        Ctrl+D     salir
+  !! / !n / !-n / !texto repetir un comando del historial

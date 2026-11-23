@@ -13,6 +13,7 @@ creatures
 file[0-9]*
 # CSV del K-NN: se regeneran desde Dataset/*.npy con "make datos"
 P07_KNN_1178761/data/
+P08_Proyecto_1178761/data/
 P07_KNN_1178761/Dataset/*.npy
 
 # Metadatos de Windows al copiar archivos a WSL
